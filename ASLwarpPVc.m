@@ -8,13 +8,11 @@ for resource= dir(sprintf('%s/sequence*',asl_base))
   ASLoutput = sprintf('%s/%s',asl_base,resource.name);
 
 
-%******Code for extracting tar file
-
 %locate the files in ASLoutput
-CBF=spm_select('FPList',deblank(ASLoutput),'.*qCBF.*nii');CBF=CBF(1,:);
-T1ASL=spm_select('FPList',deblank(ASLoutput),'^T1.nii');
+CBF=spm_select('FPList',deblank(ASLoutput),'.*qCBF.*nii$');CBF=CBF(1,:);
+T1ASL=spm_select('FPList',deblank(ASLoutput),'^T1.nii$');
 %locate desired files in RobustOUtput
-field=spm_select('FPList',smri_directory,'anat2tpl.warp.field.nii');%replace smri_directory with temporary folder in which the tar file contents are located
+field=spm_select('FPList',smri_directory,'anat2tpl.warp.field.nii$');%replace smri_directory with temporary folder in which the tar file contents are located
 head=spm_select('FPList',smri_directory,'^head.nii$');%replace smri_directory with temporary folder in which the tar file contents are located
 others=cellstr(strvcat(spm_select('FPList',smri_directory,'^brain.msk.nii$'),...
     spm_select('FPList',smri_directory,'^gm.nii$'),...
@@ -22,12 +20,12 @@ others=cellstr(strvcat(spm_select('FPList',smri_directory,'^brain.msk.nii$'),...
 %load matlabbatch file and perform 
 %1) coregistration of T1ASL to head.nii
 %2) warping all files to template space using a nat2tpl.warp.field.nii
-%load('/projects/p20394/software/matlab/warp.mat');%replace with NUNDA location
-load('C:\Users\Admin\Documents\MATLAB\NUNDA\coreg.mat');
+%load('C:\Users\Admin\Documents\MATLAB\NUNDA\warp.mat');%replace with NUNDA location
+load('/projects/p20394/software/matlab/coreg.mat');
 matlabbatch{1,1}.spm.spatial.coreg.estimate.ref{1}=head;
 matlabbatch{1,1}.spm.spatial.coreg.estimate.source{1}=T1ASL;
 matlabbatch{1,1}.spm.spatial.coreg.estimate.other=cellstr(CBF);
-test=load('C:\Users\Admin\Documents\MATLAB\NUNDA\warp.mat');
+test=load('/projects/p20394/software/matlab/warp.mat');
 matlabbatch{1,2}=test.matlabbatch{1,1};
 matlabbatch{1,2}.spm.tools.vbm8.tools.defs.field1{1}=field;
 matlabbatch{1,2}.spm.tools.vbm8.tools.defs.images=cat(1,head,others,cellstr(CBF));
