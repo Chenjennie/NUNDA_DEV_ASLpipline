@@ -21,11 +21,11 @@ others=cellstr(strvcat(spm_select('FPList',smri_directory,'^brain.msk.nii$'),...
 %1) coregistration of T1ASL to head.nii
 %2) warping all files to template space using a nat2tpl.warp.field.nii
 %load('C:\Users\Admin\Documents\MATLAB\NUNDA\warp.mat');%replace with NUNDA location
-load('/projects/p20394/software/matlab/coreg.mat');
+load('/projects/p20394/software/pipeline_external/DEV_StdASL/coreg.mat');
 matlabbatch{1,1}.spm.spatial.coreg.estimate.ref{1}=head;
 matlabbatch{1,1}.spm.spatial.coreg.estimate.source{1}=T1ASL;
 matlabbatch{1,1}.spm.spatial.coreg.estimate.other=cellstr(CBF);
-test=load('/projects/p20394/software/matlab/warp.mat');
+test=load('/projects/p20394/software/pipeline_external/DEV_StdASL/warp.mat');
 matlabbatch{1,2}=test.matlabbatch{1,1};
 matlabbatch{1,2}.spm.tools.vbm8.tools.defs.field1{1}=field;
 matlabbatch{1,2}.spm.tools.vbm8.tools.defs.images=cat(1,head,others,cellstr(CBF));
