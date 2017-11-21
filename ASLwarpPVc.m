@@ -1,7 +1,7 @@
 function ASLwarpPVc(smri_directory, asl_base)
 disp(sprintf('Running ASL_RobustNormalization pipeline, date=%s...\n',datestr(now)))
-disp(sprintf('SMRIdir=%s\n',smri_directory))
-disp(sprintf('ASLdir=%s\n',asl_base))
+disp(sprintf('SMRIdir=%s...\n',smri_directory))
+disp(sprintf('ASLdir=%s...\n',asl_base))
 try
 
 for resource= dir(sprintf('%s/sequence*',asl_base))
