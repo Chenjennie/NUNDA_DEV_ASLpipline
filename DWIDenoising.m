@@ -25,7 +25,7 @@ nbthread = 2; % INTEL with old matlab
 % addpath 'spm8';
 % addpath 'gui';
 %packagepath = '/home/yfc938/software/DWIDenoisingPackage_r01_pcode/DWIDenoisingPackage_r01_pcode';
-packagepath = '/projects/p20394/software/pipeline_external/DEV_StdASL/DWIDenoisingPackage_r01_pcode/DWIDenoisingPackage_r01_pcode';%NUNDA
+packagepath = '/projects/p20394/software/pipeline_external/DEV_StdASL/';%NUNDA
 addpath(genpath(fullfile(packagepath, 'DWIDenoisingPackage')));
 
 
