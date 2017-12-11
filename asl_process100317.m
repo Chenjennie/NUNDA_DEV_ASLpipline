@@ -15,11 +15,6 @@ fsldirmpath = sprintf('%s/etc/matlab',fsldir);
 path(path, fsldirmpath);
 clear fsldir fsldirmpath;
 
-%addpath('/home/yfc938/MatlabCode/DTCWT-NLM_code')
-if nargin<3
-    error('Need at least 3 arguments')
-end
-
 sprintf('Processing folder: %s\n',aslfolder)
     cd(aslfolder)
     settings.CBF_folder=fullfile(aslfolder,'CBFmaps');
@@ -255,7 +250,7 @@ try
     fprintf(fileID,'Please send questions & feedback to <a href=mailto:yfchen@northwestern.edu>Jennie Chen</a>.\n');
     
     fprintf(fileID,'\n111414 changed code to accomodate no T1 such that will run to completion.\n');
-    fprintf(fileID,'070215 added option for NLM filtering of perfusion time series.\n');
+    fprintf(fileID,'121117 added option for LPCA DWIdenoising (Pierrick Coupe & Jose Manjon) of raw image time series.\n');
     fprintf(fileID,'070915 added option for regression of motion, 1st derivative of motion, gsignal & CSF.\n');
     fprintf(fileID,'082415 define mask using mean of ASL ctrls instead of mean, also implemented markdown for pdf generation.\n');
     fprintf(fileID,'031416 added functionality for Siemens WIP 818F BS-ASL. Modified qCBF code to remove NaN box around volume. Output indices of rejected volumes in param.ini.\n');
@@ -267,7 +262,7 @@ try
     fprintf(fileID,'3. Maumet C. et al., In: Multimodal Brain Image Analysis. MBIA 2012. Lecture Notes in Computer Science, vol 7509, pp215-224.\n ');
     fprintf(fileID,'4. Du AT., et al, Neurology 2006;67:1215-1220\n ');
     fprintf(fileID,'5. Asllani I., et al, MRM 2008;60:1362-1371\n ');
-    fprintf(fileID,'6. Liang X., et al, Brain Connectivity 2015;5:543-553\n ');
+    fprintf(fileID,'6. Manjon J., et al, PLoS ONE 8(9): e73021\n ');
     fprintf(fileID,'7. Wang Z., et al, MRI 2012;30:1409-1415\n ');
     
     fprintf(fileID,'\n## ASLQA summary:\n');

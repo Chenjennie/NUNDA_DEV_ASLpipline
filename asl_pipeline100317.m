@@ -45,11 +45,10 @@ if ~isempty(t1folder)
         filenames=unzip(Lesionmask,fullfile(pwd,'tmp'));
         test=cellfun(@isempty,strfind(filenames,'gz'));
         if ~isempty(test(test==0))
-            gfilenames=gunzip(filenames{test==0}); 
-            
+            gfilenames=gunzip(filenames{test==0});
+            delete(filenames{test==0});
         end
-        lesionT1=filenames{cellfun(@isempty,strfind(filenames,'T1.nii'))==0};
-        if isempty(lesionT1), lesionT1=filenames{cellfun(@isempty,strfind(gfilenames,'T1.nii'))==0};end
+        lesionT1=spm_select('FPList',fullfile(pwd,'tmp'),'^T1.*.nii$');
         lesionmask=filenames{cellfun(@isempty,strfind(filenames,'lesionmask.nii'))==0};
         if isempty(lesionmask), lesionmask=filenames{cellfun(@isempty,strfind(gfilenames,'lesionmask.nii'))==0};end
         [pth,nm,ext]=fileparts(lesionmask);
@@ -187,11 +186,11 @@ if ~isempty(paramfile)
     end
     param(:,4:6)=param(:,4:6)*180/pi;
     if strcmp(settings.subt,'pairwise')
-            diffpara=abs(param(1:2:end,:)-param(2:2:end,:));
+        diffpara=abs(param(1:2:end,:)-param(2:2:end,:));
     else
-            for a=2:size(param,1)-1
-                diffpara(a-1,:)=param(a,:)-0.5*(param(a-1,:)+param(a+1,:));
-            end
+        for a=2:size(param,1)-1
+            diffpara(a-1,:)=param(a,:)-0.5*(param(a-1,:)+param(a+1,:));
+        end
     end
     rawfilter=sum([abs(diffpara(:,1:3))>0.8 abs(diffpara(:,4:6))>0.8],2)>0;
     gcbf=zeros(ss(4),1);csfsig=zeros(ss(4),1);
@@ -224,6 +223,17 @@ else
     rawfilter=zeros(length(gcbf),1);
 end
 
+%added 120817--------------------------
+if settings.NLM==1
+%     denoised_ndata=zeros(size(ndata));
+%     for x=1:size(ndata,4)
+%         denoised_ndata(:,:,:,x)=MRIdenoising(ndata(:,:,:,x));
+%     end
+denoised_ndata=DWIDenoising(ndata);
+    ndata=denoised_ndata;
+end
+
+
 Ctrl=ndata(:,:,:,2:2:end);
 Tag=ndata(:,:,:,1:2:end);
 if isempty(M0folder)
@@ -247,24 +257,25 @@ V_CBF.fname=fullfile(settings.CBF_folder,'meanEPI.nii');
 spm_create_vol(V_CBF);spm_write_vol(V_CBF,mean(Ctrl,4).*mask);
 
 if strcmp(settings.subt,'pairwise')
-        Perf=Ctrl-Tag;SubOrder='Ctrl-Tag';
-        if fcnl==1, BOLD=(Ctrl+Tag)/2;end
-        subtmethod='pair';
+    Perf=Ctrl-Tag;SubOrder='Ctrl-Tag';
+    if fcnl==1, BOLD=(Ctrl+Tag)/2;end
+    subtmethod='pair';
 else
-        SubOrder='Ctrl-Tag';
-        for a=1:size(Tag,4)-1
-            Perf(:,:,:,a*2-1)=Ctrl(:,:,:,a)-(Tag(:,:,:,a)+Tag(:,:,:,a+1))/2;
-            Perf(:,:,:,a*2)=(Ctrl(:,:,:,a)+Ctrl(:,:,:,a+1))/2-Tag(:,:,:,a+1);
-            if settings.asl==2&&isempty(M0folder)
-                M0(:,:,:,a*2-1)=Ctrl(:,:,:,a);
-                M0(:,:,:,a*2)=(Ctrl(:,:,:,a)+Ctrl(:,:,:,a+1))/2;
-            end
-            if fcnl==1
-                BOLD(:,:,:,a*2-1)=(Ctrl(:,:,:,a)+(Tag(:,:,:,a)+Tag(:,:,:,a+1))/2)/2;
-                BOLD(:,:,:,a*2)=((Ctrl(:,:,:,a)+Ctrl(:,:,:,a+1))/2+Tag(:,:,:,a))/2;
-            end
+    SubOrder='Ctrl-Tag';
+    for a=1:size(Tag,4)-1
+        Perf(:,:,:,a*2-1)=Ctrl(:,:,:,a)-(Tag(:,:,:,a)+Tag(:,:,:,a+1))/2;
+        Perf(:,:,:,a*2)=(Ctrl(:,:,:,a)+Ctrl(:,:,:,a+1))/2-Tag(:,:,:,a+1);
+        
+        if settings.asl==2&&isempty(M0folder)
+            M0(:,:,:,a*2-1)=Ctrl(:,:,:,a);
+            M0(:,:,:,a*2)=(Ctrl(:,:,:,a)+Ctrl(:,:,:,a+1))/2;
         end
-        subtmethod='surr';%JC added 3/8/13
+        if fcnl==1
+            BOLD(:,:,:,a*2-1)=(Ctrl(:,:,:,a)+(Tag(:,:,:,a)+Tag(:,:,:,a+1))/2)/2;
+            BOLD(:,:,:,a*2)=((Ctrl(:,:,:,a)+Ctrl(:,:,:,a+1))/2+Tag(:,:,:,a))/2;
+        end
+    end
+    subtmethod='surr';%JC added 3/8/13
 end
 
 if mean(nonzeros(mean(Perf,4).*mask))<0
@@ -274,7 +285,13 @@ end
 Perf(isnan(Perf))=0;
 
 %calculate uncorrected SNR and tSNR
-meanuncorrPerf=mean(Perf,4);
+uncorrPerf=data(:,:,:,2:2:end)-data(:,:,:,1:2:end);uncorrPerf(isnan(uncorrPerf))=0;
+if mean(nonzeros(mean(uncorrPerf,4).*mask))<0
+    uncorrPerf=-uncorrPerf;
+    SubOrder='Tag-Ctrl';
+end
+
+meanuncorrPerf=mean(uncorrPerf,4);
 SNRmap=meanuncorrPerf;
 for slc=1:Slices
     acqcorr=(slc-1)*settings.acq;
@@ -285,13 +302,13 @@ end
 SNRmap(isnan(SNRmap)|isinf(SNRmap))=0;
 uncorrSNR=mean(nonzeros(SNRmap));clear SNRmap meanuncorrPerf bkg;
 
-noise=std(Perf.*repmat(mask,[1 1 1 size(Perf,4)]),1,4);noise(isnan(noise))=0;
-tSNR=mask.*(mean(Perf.*repmat(mask,[1 1 1 size(Perf,4)]),4)./noise);
+noise=std(uncorrPerf.*repmat(mask,[1 1 1 size(uncorrPerf,4)]),1,4);noise(isnan(noise))=0;
+tSNR=mask.*(mean(uncorrPerf.*repmat(mask,[1 1 1 size(uncorrPerf,4)]),4)./noise);
 tSNR(isnan(tSNR))=0;tSNR(isinf(tSNR))=0;
-uncorrtSNR=mean(nonzeros(tSNR));clear noiss tSNR;
+uncorrtSNR=mean(nonzeros(tSNR));clear noise tSNR;
 
 
-outliers=struct('dInd',[],'DeletedPairs',0,'FinalPairNo',size(Perf,4)); 
+outliers=struct('dInd',[],'DeletedPairs',0,'FinalPairNo',size(Perf,4));
 delInd=zeros(size(Perf,4),1);
 
 if settings.outlier==1
@@ -383,45 +400,7 @@ if settings.outlier==1
     end
 end
 
-%added 070215--------------------------
-if settings.NLM==1
-    % parameters for block-wise NLM
-    M=3;    %  controlling size of search volume
-    alpha=1;  % controlling block size
-    
-    denoisedPerf=zeros(size(Perf));I_orig=Perf;
-    disp('Denoising perfusion timeseries...');
-    for i=1:size(Perf,4)
-        ref=I_orig(:,:,:,i);
-        %estimation of noise level
-        estimated_noise=RicianSTD(I_orig(:,:,:,i));
-        
-        s=size(I_orig(:,:,:,i));
-        
-        % adjust the noise level to balance the effect of denoising and smoothing
-        level=estimated_noise/4;
-        
-        % Make sure the intensity is non-negative
-        L = min(ref(:));
-        I_orig(:,:,:,i) = I_orig(:,:,:,i) + abs(L);
-        
-        % Obtaining images with preserved featrues
-        I_SP(:,:,:,i)=onlm(I_orig(:,:,:,i),M,alpha,level); % onlm - optimized block-wise non-local means denoising, compiled mex-file
-        I_SP(:,:,:,i)=I_SP(:,:,:,i) - abs(L);
-        
-        
-        % Obtaining images with noise components removed
-        I_BP(:,:,:,i)=onlm(I_orig(:,:,:,i),M,alpha+1,level);
-        I_BP(:,:,:,i)=I_BP(:,:,:,i) - abs(L);
-        
-        % Further denoising with DT-CWT
-        denoisedPerf(:,:,:,i) = DTCWT(I_orig(:,:,:,i),I_SP(:,:,:,i),I_BP(:,:,:,i));
-    end
-    disp('Done!');
-    Perf=denoisedPerf;
-    clear denoisedPerf I_orig I_BP I_SP L M alpha level;
-end
-%added 070215--------------------------
+
 
 %output Perf & M0
 save_avw(Perf,fullfile(settings.intfolder,sprintf('%s_%s_Perf.%s',settings.visit,settings.ser,settings.ext)),'f',[settings.Voxels' settings.TR/1000]);
@@ -489,15 +468,15 @@ else
     isquant=0;
     disp('WARNING: no M0, so no quantification!')
     for n=1:size(mean_Perf,3)
-    y=ceil(n/fac);
-    x=n-(y-1)*fac;
-    temp1((y-1)*size(mean_Perf,2)+1:y*size(mean_Perf,2),(x-1)*size(mean_Perf,1)+1:x*size(mean_Perf,1))=imrotate(mean_Perf(:,:,n).*mask(:,:,n),90);
-end
-fg=figure('Position',[500 scrsz(4) scrsz(3)*.25 scrsz(4)/2],'color','white','PaperPositionMode','auto','PaperType','usletter');
-subplot(2,1,1);imagesc(temp1,[0 120]);colormap(jet);colorbar('vert');
-title('mean Perfusion map')
-subplot(2,1,2);hist(mean_Perf(mask>0),128);xlabel('mean Perf signal (a.u.)');ylabel('# voxels');title('Histogram of mean perfusion signals');
-saveas(fg,fullfile(settings.pdffolder,'meanPerf.pdf'));
+        y=ceil(n/fac);
+        x=n-(y-1)*fac;
+        temp1((y-1)*size(mean_Perf,2)+1:y*size(mean_Perf,2),(x-1)*size(mean_Perf,1)+1:x*size(mean_Perf,1))=imrotate(mean_Perf(:,:,n).*mask(:,:,n),90);
+    end
+    fg=figure('Position',[500 scrsz(4) scrsz(3)*.25 scrsz(4)/2],'color','white','PaperPositionMode','auto','PaperType','usletter');
+    subplot(2,1,1);imagesc(temp1,[0 120]);colormap(jet);colorbar('vert');
+    title('mean Perfusion map')
+    subplot(2,1,2);hist(mean_Perf(mask>0),128);xlabel('mean Perf signal (a.u.)');ylabel('# voxels');title('Histogram of mean perfusion signals');
+    saveas(fg,fullfile(settings.pdffolder,'meanPerf.pdf'));
 end
 
 mat=spm_select('FPList',settings.intfolder,'^y.*nii$');
@@ -546,7 +525,7 @@ if settings.WIP==1
 end
 
 qCBF=mean(buf,4);
-qCBF((qCBF<-10|qCBF>150))=0;buf((buf<-10|buf>150))=0;
+qCBF((qCBF<-10|qCBF>150))=0;buf((buf<-10|buf>150))=0;qCBF(isnan(qCBF)|isinf(qCBF))=0;
 V_qCBF.fname=fullfile(settings.CBF_folder,sprintf('%s_%04d_qCBF.%s',settings.visit,settings.serNumber,settings.ext));
 V_qCBF.descrip=sprintf('qCBFmap');
 V_qCBF=spm_create_vol(V_qCBF);
@@ -566,7 +545,7 @@ title(['global CBF\_uncorr=',sprintf('%.2f ml/100g/min',gCBF)])
 subplot(2,1,2);hist(nonzeros(qCBF),128);xlabel('qCBF (ml/100g/min)');ylabel('# voxels');title('Histogram of uncorr perfusion values');
 saveas(fg,fullfile(settings.pdffolder,'globalCBF.pdf'));
 
-if strcmp(settings.PVcmethod,'none')~=1 
+if strcmp(settings.PVcmethod,'none')~=1
     gCBF=PVcorrection(Perf, M0, settings);
 end
 end
@@ -601,7 +580,8 @@ switch settings.PVcmethod
             tmpWM=100*0.82*mask.*mean(WMdm,4)./(2*settings.eff*mean(WMM0,4)*(settings.T1b/60000)*(exp(-settings.w/settings.T1b)-exp(-(settings.tau+settings.w)/settings.T1b)));
         end
         
-        tmpGM(GM<0.01)=0;tmpWM(WM<0.01)=0;
+        tmpGM(GM<0.01)=0;tmpGM(isnan(tmpGM)|isinf(tmpGM))=0;
+        tmpWM(WM<0.01)=0;tmpWM(isnan(tmpWM)|isinf(tmpWM))=0;
         if settings.WIP==1, tmpGM=tmpGM/10;tmpWM=tmpWM/10;end
         V_qCBF.fname=fullfile(settings.CBF_folder,sprintf('%s_%04d_GMqCBF_LRPVc.%s',settings.visit,settings.serNumber,settings.ext));
         V_qCBF.descrip=sprintf('Pure GM qCBFmap with LR(Asllani) PVc');
@@ -626,7 +606,7 @@ switch settings.PVcmethod
         V_qCBF.descrip=sprintf('qCBFmap with PET PVc');
         V_qCBF=spm_create_vol(V_qCBF);
         V_qCBF=spm_write_vol(V_qCBF,qCBF_PVc);
-        CBFfiles=spm_select('FPlist',CBF_folder,'.*PETPVc.nii');
+        CBFfiles=spm_select('FPlist',settings.CBF_folder,'.*PETPVc.nii');
 end
 
 fac=ceil(sqrt(size(qCBF,3)));
@@ -639,7 +619,7 @@ end
 V=spm_vol(qCBFf);
 spm_create_vol(V);spm_write_vol(V,qCBF.*mask);
 
-gGMCBF(1)=mean(qCBF(GM>0));
+gGMCBF(1)=mean(nonzeros(qCBF));
 gGMCBF(2)=mean(qCBF_PVc((GM>0)));
 scrsz = get(0,'ScreenSize');
 fg=figure('Position',[500 scrsz(4)/2 scrsz(3)*.5 scrsz(4)-100],'color','white','PaperPositionMode','auto','PaperType','usletter');
