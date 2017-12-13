@@ -225,11 +225,11 @@ end
 
 %added 120817--------------------------
 if settings.NLM==1
-%     denoised_ndata=zeros(size(ndata));
-%     for x=1:size(ndata,4)
-%         denoised_ndata(:,:,:,x)=MRIdenoising(ndata(:,:,:,x));
-%     end
-denoised_ndata=DWIDenoising(ndata);
+denoised_ndata=zeros(size(ndata));
+    for x=1:size(ndata,4)
+        denoised_ndata(:,:,:,x)=MRIdenoising(ndata(:,:,:,x));
+    end
+%denoised_ndata=DWIDenoising(ndata);
     ndata=denoised_ndata;
 end
 
