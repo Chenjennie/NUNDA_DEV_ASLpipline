@@ -545,7 +545,7 @@ title(['global CBF\_uncorr=',sprintf('%.2f ml/100g/min',gCBF)])
 subplot(2,1,2);hist(nonzeros(qCBF),128);xlabel('qCBF (ml/100g/min)');ylabel('# voxels');title('Histogram of uncorr perfusion values');
 saveas(fg,fullfile(settings.pdffolder,'globalCBF.pdf'));
 
-if strcmp(settings.PVcmethod,'none')~=1
+if strcmp(settings.PVcmethod,'None')~=1
     gCBF=PVcorrection(Perf, M0, settings);
 end
 end
