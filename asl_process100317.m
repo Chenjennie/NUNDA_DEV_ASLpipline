@@ -23,7 +23,7 @@ sprintf('Processing folder: %s\n',aslfolder)
     end
     
 if isempty(t1folder)
-    PVcmethod='none';
+    PVcmethod='None';
 end
 
 settings.field=fieldstrength;%input('Enter field strength: 1.5, 3 or 7\n');
@@ -350,7 +350,7 @@ try
     if isquant==1
         doscmd=sprintf('%s %s/globalCBF.pdf',doscmd,settings.pdffolder);
         
-        if strcmp(settings.PVcmethod,'none')~=1
+        if strcmp(settings.PVcmethod,'None')~=1
             doscmd=sprintf('%s %s/globalCBFPVc.pdf',doscmd,settings.pdffolder);
         end
     else
